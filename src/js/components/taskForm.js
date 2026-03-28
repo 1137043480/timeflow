@@ -123,55 +123,67 @@ class TaskForm {
     btn.disabled = true;
     btn.textContent = '🤖 预估中...';
     resultArea.style.display = 'block';
-    resultBody.innerHTML = '<span class="loading-dots">AI 正在分析</span>';
+    resultBody.innerHTML = '<span class="loading-dots">正在分析</span>';
 
     const desc = document.getElementById('task-desc').value.trim();
     const categoryId = document.getElementById('task-category').value;
     const tagIds = this.getSelectedTags();
+    const userEstimate = parseInt(document.getElementById('task-estimate').value) || 30;
 
     try {
-      // Try LLM first
-      const llmResult = await timeEstimator.llmEstimate(title, desc, categoryId, tagIds);
+      // 同时运行两个引擎
       const localResult = timeEstimator.localEstimate(title, categoryId, tagIds);
+      const llmResult = await timeEstimator.llmEstimate(title, desc, categoryId, tagIds);
 
-      if (llmResult && !llmResult.error) {
-        this.aiEstimateResult = llmResult.estimatedMinutes;
-        resultBody.innerHTML = `
-          <div style="margin-bottom:8px;">
-            <strong>🤖 AI 预估：${llmResult.estimatedMinutes} 分钟</strong>
-            （置信度：${llmResult.confidence || '-'}）
-          </div>
-          <div style="margin-bottom:8px;">${escapeHtml(llmResult.explanation || '')}</div>
-          ${localResult ? `
-            <div style="border-top:1px solid var(--border-color);padding-top:8px;margin-top:8px;font-size:0.8rem;">
-              📊 本地统计：${localResult.biasText}（基于 ${localResult.sampleSize} 个历史任务）
-            </div>
-          ` : ''}
-        `;
-      } else {
-        // Fallback to local estimation
-        if (localResult) {
-          const suggestedMinutes = Math.round(
-            (parseInt(document.getElementById('task-estimate').value) || 30) * localResult.adjustmentFactor
-          );
-          this.aiEstimateResult = suggestedMinutes;
-          resultBody.innerHTML = `
-            <div style="margin-bottom:8px;">
-              <strong>📊 统计预估：${suggestedMinutes} 分钟</strong>
+      let html = '';
+
+      // 本地统计引擎
+      if (localResult) {
+        const suggestedMinutes = Math.round(userEstimate * localResult.adjustmentFactor);
+        html += `
+          <div style="padding:10px;border-radius:8px;background:rgba(99,102,241,0.1);margin-bottom:10px;">
+            <div style="margin-bottom:6px;">
+              <strong>📊 本地统计预估：${suggestedMinutes} 分钟</strong>
               （置信度：${localResult.confidence}）
             </div>
-            <div>${localResult.biasText}（基于 ${localResult.sampleSize} 个历史任务）</div>
-            ${llmResult?.error ? `<div style="margin-top:8px;color:var(--color-warning);font-size:0.8rem;">LLM 不可用：${escapeHtml(llmResult.error)}</div>` : ''}
-          `;
-        } else {
-          resultBody.innerHTML = `
-            <div style="color:var(--color-warning);">
-              历史数据不足（需要至少 3 个已完成的同类任务），暂时无法给出预估建议。
-              ${llmResult?.error ? `<br>LLM 错误：${escapeHtml(llmResult.error)}` : ''}
+            <div style="font-size:0.85rem;opacity:0.8;">
+              ${localResult.biasText}（基于 ${localResult.sampleSize} 个历史任务）
             </div>
-          `;
-        }
+          </div>
+        `;
+      } else {
+        html += `
+          <div style="padding:10px;border-radius:8px;background:rgba(99,102,241,0.05);margin-bottom:10px;font-size:0.85rem;opacity:0.6;">
+            📊 本地统计：数据不足（需要至少 3 个已完成任务）
+          </div>
+        `;
       }
+
+      // LLM 引擎
+      if (llmResult && !llmResult.error) {
+        this.aiEstimateResult = llmResult.estimatedMinutes;
+        html += `
+          <div style="padding:10px;border-radius:8px;background:rgba(16,185,129,0.1);">
+            <div style="margin-bottom:6px;">
+              <strong>🤖 AI 预估：${llmResult.estimatedMinutes} 分钟</strong>
+              （置信度：${llmResult.confidence || '-'}）
+            </div>
+            <div style="font-size:0.85rem;opacity:0.8;">${escapeHtml(llmResult.explanation || '')}</div>
+          </div>
+        `;
+      } else {
+        // LLM 失败，用本地结果作为推荐
+        if (localResult) {
+          this.aiEstimateResult = Math.round(userEstimate * localResult.adjustmentFactor);
+        }
+        html += `
+          <div style="padding:10px;border-radius:8px;background:rgba(245,158,11,0.1);font-size:0.85rem;">
+            🤖 AI 预估不可用${llmResult?.error ? `：${escapeHtml(llmResult.error)}` : ''}
+          </div>
+        `;
+      }
+
+      resultBody.innerHTML = html;
     } catch (e) {
       resultBody.innerHTML = `<div style="color:var(--color-danger);">预估失败：${escapeHtml(e.message)}</div>`;
     }
