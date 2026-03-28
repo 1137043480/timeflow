@@ -16,17 +16,19 @@ class TimeEstimator {
     // Score similarity
     const scored = similar.map(t => {
       let score = 0;
-      if (t.categoryId === categoryId) score += 3;
+      // 分类匹配（基础相关性）
+      if (t.categoryId === categoryId) score += 2;
+      // 标签匹配（行为特征）
       if (t.tags) {
         const commonTags = t.tags.filter(tag => tagIds.includes(tag));
-        score += commonTags.length;
+        score += commonTags.length * 1.5;
       }
-      // Title keyword matching
+      // 标题关键词匹配（内容相关性，权重最高）
       const titleWords = taskTitle.toLowerCase().split(/\s+/);
       const matchWords = titleWords.filter(w =>
         w.length > 1 && t.title.toLowerCase().includes(w)
       );
-      score += matchWords.length * 0.5;
+      score += matchWords.length * 1.5;
       return { ...t, similarityScore: score };
     });
 
