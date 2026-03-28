@@ -17,18 +17,33 @@ class TimeEstimator {
     const scored = similar.map(t => {
       let score = 0;
       // 分类匹配（基础相关性）
-      if (t.categoryId === categoryId) score += 2;
+      if (t.categoryId === categoryId) score += 1.5;
       // 标签匹配（行为特征）
       if (t.tags) {
         const commonTags = t.tags.filter(tag => tagIds.includes(tag));
         score += commonTags.length * 1.5;
       }
-      // 标题关键词匹配（内容相关性，权重最高）
-      const titleWords = taskTitle.toLowerCase().split(/\s+/);
-      const matchWords = titleWords.filter(w =>
-        w.length > 1 && t.title.toLowerCase().includes(w)
-      );
-      score += matchWords.length * 1.5;
+      // 标题内容匹配（权重最高）
+      // 支持中文：拆成2字词组 + 英文按空格分词
+      const getTokens = (text) => {
+        const tokens = [];
+        const lower = text.toLowerCase();
+        // 英文单词
+        const words = lower.match(/[a-z]{2,}/g) || [];
+        tokens.push(...words);
+        // 中文2字词组（bigram）
+        const chinese = lower.match(/[\u4e00-\u9fff]/g) || [];
+        for (let i = 0; i < chinese.length - 1; i++) {
+          tokens.push(chinese[i] + chinese[i + 1]);
+        }
+        // 单独的中文字符也加入（权重较低）
+        tokens.push(...chinese);
+        return [...new Set(tokens)];
+      };
+      const newTokens = getTokens(taskTitle);
+      const oldTokens = getTokens(t.title);
+      const matchCount = newTokens.filter(tok => oldTokens.includes(tok)).length;
+      score += matchCount * 1.5;
       return { ...t, similarityScore: score };
     });
 
