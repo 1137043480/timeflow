@@ -5,6 +5,10 @@ contextBridge.exposeInMainWorld('api', {
   getTasks: () => ipcRenderer.invoke('store:getTasks'),
   setTasks: (tasks) => ipcRenderer.invoke('store:setTasks', tasks),
 
+  // Archived Tasks
+  getArchivedTasks: () => ipcRenderer.invoke('store:getArchivedTasks'),
+  setArchivedTasks: (tasks) => ipcRenderer.invoke('store:setArchivedTasks', tasks),
+
   // Categories
   getCategories: () => ipcRenderer.invoke('store:getCategories'),
   setCategories: (cats) => ipcRenderer.invoke('store:setCategories', cats),

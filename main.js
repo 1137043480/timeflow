@@ -47,6 +47,7 @@ class JsonStore {
 
 const defaults = {
   tasks: [],
+  archivedTasks: [],
   categories: [
     { id: 'cat-work', name: '工作', color: '#6366f1', icon: '💼' },
     { id: 'cat-study', name: '学习', color: '#8b5cf6', icon: '📚' },
@@ -142,6 +143,10 @@ app.on('window-all-closed', () => {
 // Tasks
 ipcMain.handle('store:getTasks', () => store.get('tasks'));
 ipcMain.handle('store:setTasks', (_, tasks) => { store.set('tasks', tasks); return true; });
+
+// Archived Tasks
+ipcMain.handle('store:getArchivedTasks', () => store.get('archivedTasks'));
+ipcMain.handle('store:setArchivedTasks', (_, tasks) => { store.set('archivedTasks', tasks); return true; });
 
 // Categories
 ipcMain.handle('store:getCategories', () => store.get('categories'));

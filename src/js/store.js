@@ -4,6 +4,7 @@
 class DataStore {
   constructor() {
     this.tasks = [];
+    this.archivedTasks = []; // 归档任务：从看板删除但保留数据用于报表和AI
     this.categories = [];
     this.tags = [];
     this.settings = {};
@@ -13,6 +14,7 @@ class DataStore {
   async init() {
     if (this._loaded) return;
     this.tasks = await window.api.getTasks();
+    this.archivedTasks = await window.api.getArchivedTasks();
     this.categories = await window.api.getCategories();
     this.tags = await window.api.getTags();
     this.settings = await window.api.getSettings();
@@ -52,6 +54,12 @@ class DataStore {
   }
 
   async deleteTask(id) {
+    const task = this.tasks.find(t => t.id === id);
+    // 已完成的任务归档保留数据，未完成的直接删除
+    if (task && task.status === 'completed') {
+      this.archivedTasks.push(task);
+      await this.saveArchivedTasks();
+    }
     this.tasks = this.tasks.filter(t => t.id !== id);
     await this.saveTasks();
   }
@@ -65,7 +73,8 @@ class DataStore {
   }
 
   getTasksForDate(dateStr) {
-    return this.tasks.filter(t => {
+    const all = [...this.tasks, ...this.archivedTasks];
+    return all.filter(t => {
       if (!t.completedAt) return false;
       return t.completedAt.startsWith(dateStr);
     });
@@ -77,14 +86,22 @@ class DataStore {
     startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
 
-    return this.tasks.filter(t => {
+    const all = [...this.tasks, ...this.archivedTasks];
+    return all.filter(t => {
       if (!t.completedAt) return false;
       return new Date(t.completedAt) >= startOfWeek;
     });
   }
 
   getCompletedTasks() {
-    return this.tasks.filter(t => t.status === 'completed');
+    // 包含归档任务，用于报表和AI预估
+    const active = this.tasks.filter(t => t.status === 'completed');
+    return [...active, ...this.archivedTasks];
+  }
+
+  // ===== Archived Tasks =====
+  async saveArchivedTasks() {
+    await window.api.setArchivedTasks(this.archivedTasks);
   }
 
   getTasksByCategory(categoryId) {
