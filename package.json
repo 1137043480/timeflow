@@ -1,0 +1,29 @@
+{
+  "name": "timeflow",
+  "version": "1.0.0",
+  "description": "TimeFlow - 智能时间规划与管理",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build-linux": "electron-builder --linux"
+  },
+  "author": "TimeFlow",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {},
+  "build": {
+    "appId": "com.timeflow.app",
+    "productName": "TimeFlow",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

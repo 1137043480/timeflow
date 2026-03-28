@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeFlow - 智能时间管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/index.css">
+  <link rel="stylesheet" href="styles/sidebar.css">
+  <link rel="stylesheet" href="styles/tasks.css">
+  <link rel="stylesheet" href="styles/reports.css">
+  <link rel="stylesheet" href="styles/modal.css">
+</head>
+<body>
+  <!-- Title Bar (macOS style drag region) -->
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-drag"></div>
+    <span class="titlebar-title">TimeFlow</span>
+  </div>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">⏱</span>
+          <span class="logo-text">TimeFlow</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a class="nav-item active" data-view="tasks" id="nav-tasks">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">任务</span>
+        </a>
+        <a class="nav-item" data-view="reports" id="nav-reports">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">报表</span>
+        </a>
+        <a class="nav-item" data-view="categories" id="nav-categories">
+          <span class="nav-icon">🏷️</span>
+          <span class="nav-label">分类标签</span>
+        </a>
+        <a class="nav-item" data-view="settings" id="nav-settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">设置</span>
+        </a>
+      </nav>
+
+      <!-- Active Timer in Sidebar -->
+      <div class="sidebar-timer" id="sidebar-timer" style="display:none;">
+        <div class="sidebar-timer-label">正在计时</div>
+        <div class="sidebar-timer-task" id="sidebar-timer-task"></div>
+        <div class="sidebar-timer-time" id="sidebar-timer-time">00:00:00</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="stats-mini">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-today-tasks">0</span>
+            <span class="stat-label">今日任务</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-today-time">0h</span>
+            <span class="stat-label">今日用时</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+      <!-- Tasks View -->
+      <div class="view active" id="view-tasks">
+        <div class="view-header">
+          <div class="view-title-group">
+            <h1 class="view-title">任务管理</h1>
+            <p class="view-subtitle" id="tasks-date"></p>
+          </div>
+          <div class="view-actions">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="task-search" placeholder="搜索任务..." />
+            </div>
+            <select class="filter-select" id="task-filter-category">
+              <option value="">所有分类</option>
+            </select>
+            <select class="filter-select" id="task-filter-status">
+              <option value="">所有状态</option>
+              <option value="todo">待办</option>
+              <option value="in-progress">进行中</option>
+              <option value="completed">已完成</option>
+            </select>
+            <button class="btn btn-primary" id="btn-add-task">
+              <span>+</span> 新建任务
+            </button>
+          </div>
+        </div>
+
+        <div class="task-columns" id="task-columns">
+          <div class="task-column" data-status="todo">
+            <div class="column-header">
+              <span class="column-dot dot-todo"></span>
+              <h3>待办</h3>
+              <span class="column-count" id="count-todo">0</span>
+            </div>
+            <div class="task-list" id="list-todo"></div>
+          </div>
+          <div class="task-column" data-status="in-progress">
+            <div class="column-header">
+              <span class="column-dot dot-progress"></span>
+              <h3>进行中</h3>
+              <span class="column-count" id="count-progress">0</span>
+            </div>
+            <div class="task-list" id="list-progress"></div>
+          </div>
+          <div class="task-column" data-status="completed">
+            <div class="column-header">
+              <span class="column-dot dot-done"></span>
+              <h3>已完成</h3>
+              <span class="column-count" id="count-done">0</span>
+            </div>
+            <div class="task-list" id="list-done"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports View -->
+      <div class="view" id="view-reports">
+        <div class="view-header">
+          <h1 class="view-title">时间分析</h1>
+          <div class="view-actions">
+            <div class="tab-group">
+              <button class="tab active" data-report="daily" id="tab-daily">每日</button>
+              <button class="tab" data-report="weekly" id="tab-weekly">每周</button>
+              <button class="tab" data-report="accuracy" id="tab-accuracy">预估准确度</button>
+            </div>
+          </div>
+        </div>
+        <div class="report-content" id="report-content">
+          <div class="report-panel active" id="report-daily">
+            <div class="report-summary-cards">
+              <div class="summary-card">
+                <span class="summary-icon">✅</span>
+                <div class="summary-info">
+                  <span class="summary-value" id="daily-completed">0</span>
+                  <span class="summary-label">已完成任务</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <span class="summary-icon">⏱</span>
+                <div class="summary-info">
+                  <span class="summary-value" id="daily-total-time">0h 0m</span>
+                  <span class="summary-label">总用时</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <span class="summary-icon">📐</span>
+                <div class="summary-info">
+                  <span class="summary-value" id="daily-accuracy">-</span>
+                  <span class="summary-label">预估准确度</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <span class="summary-icon">🎯</span>
+                <div class="summary-info">
+                  <span class="summary-value" id="daily-deviation">-</span>
+                  <span class="summary-label">平均偏差</span>
+                </div>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-daily"></canvas>
+            </div>
+            <div class="daily-tasks-list" id="daily-tasks-list"></div>
+          </div>
+          <div class="report-panel" id="report-weekly">
+            <div class="report-summary-cards">
+              <div class="summary-card">
+                <span class="summary-icon">📅</span>
+                <div class="summary-info">
+                  <span class="summary-value" id="weekly-completed">0</span>
+                  <span class="summary-label">本周完成</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <span class="summary-icon">⏱</span>
+                <div class="summary-info">
+                  <span class="summary-value" id="weekly-total-time">0h 0m</span>
+                  <span class="summary-label">本周总用时</span>
+                </div>
+              </div>
+            </div>
+            <div class="charts-grid">
+              <div class="chart-container">
+                <h3 class="chart-title">每日用时趋势</h3>
+                <canvas id="chart-weekly-trend"></canvas>
+              </div>
+              <div class="chart-container">
+                <h3 class="chart-title">分类占比</h3>
+                <canvas id="chart-category-pie"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="report-panel" id="report-accuracy">
+            <div class="charts-grid">
+              <div class="chart-container">
+                <h3 class="chart-title">预估 vs 实际用时</h3>
+                <canvas id="chart-scatter"></canvas>
+              </div>
+              <div class="chart-container">
+                <h3 class="chart-title">预估准确度趋势</h3>
+                <canvas id="chart-accuracy-trend"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Categories View -->
+      <div class="view" id="view-categories">
+        <div class="view-header">
+          <h1 class="view-title">分类与标签</h1>
+          <div class="view-actions">
+            <button class="btn btn-primary" id="btn-add-category">+ 新建分类</button>
+            <button class="btn btn-secondary" id="btn-add-tag">+ 新建标签</button>
+          </div>
+        </div>
+        <div class="categories-content">
+          <div class="section">
+            <h2 class="section-title">分类</h2>
+            <div class="category-grid" id="category-grid"></div>
+          </div>
+          <div class="section">
+            <h2 class="section-title">标签</h2>
+            <div class="tag-grid" id="tag-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings View -->
+      <div class="view" id="view-settings">
+        <div class="view-header">
+          <h1 class="view-title">设置</h1>
+        </div>
+        <div class="settings-content">
+          <div class="settings-section">
+            <h2 class="settings-section-title">🤖 AI 时间预估</h2>
+            <div class="setting-item">
+              <label class="setting-label">启用 LLM 辅助预估</label>
+              <label class="toggle">
+                <input type="checkbox" id="setting-enable-llm" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">API Base URL</label>
+              <input type="text" class="setting-input" id="setting-llm-url" value="https://newapi.kzwbelieve.top/v1">
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">API Key</label>
+              <input type="password" class="setting-input" id="setting-llm-key" value="">
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">模型</label>
+              <input type="text" class="setting-input" id="setting-llm-model" value="gpt-5.3-codex">
+            </div>
+          </div>
+          <div class="settings-section">
+            <h2 class="settings-section-title">🔔 通知设置</h2>
+            <div class="setting-item">
+              <label class="setting-label">到达预估时间 80% 时提醒</label>
+              <label class="toggle">
+                <input type="checkbox" id="setting-notify-80" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">到达预估时间 100% 时提醒</label>
+              <label class="toggle">
+                <input type="checkbox" id="setting-notify-100" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h2 class="settings-section-title">🎨 外观</h2>
+            <div class="setting-item">
+              <label class="setting-label">主题</label>
+              <select class="setting-input" id="setting-theme">
+                <option value="dark">深色</option>
+                <option value="light">浅色</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-save-settings" style="margin-top: 24px;">保存设置</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Task Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="task-modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">新建任务</h2>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">任务标题 *</label>
+          <input type="text" class="form-input" id="task-title" placeholder="例如：重构用户认证模块">
+        </div>
+        <div class="form-group">
+          <label class="form-label">任务描述</label>
+          <textarea class="form-input form-textarea" id="task-desc" placeholder="详细描述便于 AI 更准确地预估时间..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">分类</label>
+            <select class="form-input" id="task-category"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">预估时间（分钟）</label>
+            <div class="estimate-input-group">
+              <input type="number" class="form-input" id="task-estimate" placeholder="30" min="1">
+              <button class="btn btn-ai" id="btn-ai-estimate" title="AI 辅助预估">
+                🤖 AI 预估
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">标签</label>
+          <div class="tag-selector" id="tag-selector"></div>
+        </div>
+        <!-- AI Result Area -->
+        <div class="ai-result" id="ai-result" style="display:none;">
+          <div class="ai-result-header">
+            <span>🤖 AI 预估结果</span>
+            <button class="btn-use-estimate" id="btn-use-estimate">采用此预估</button>
+          </div>
+          <div class="ai-result-body" id="ai-result-body"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">取消</button>
+        <button class="btn btn-primary" id="modal-save">保存任务</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category/Tag Modal -->
+  <div class="modal-overlay" id="cat-modal-overlay">
+    <div class="modal modal-sm" id="cat-modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="cat-modal-title">新建分类</h2>
+        <button class="modal-close" id="cat-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">名称</label>
+          <input type="text" class="form-input" id="cat-name" placeholder="名称">
+        </div>
+        <div class="form-group">
+          <label class="form-label">颜色</label>
+          <input type="color" class="form-color" id="cat-color" value="#6366f1">
+        </div>
+        <div class="form-group" id="cat-icon-group">
+          <label class="form-label">图标 (emoji)</label>
+          <input type="text" class="form-input" id="cat-icon" placeholder="💼" maxlength="2">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cat-modal-cancel">取消</button>
+        <button class="btn btn-primary" id="cat-modal-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/utils/helpers.js"></script>
+  <script src="js/utils/timeEstimator.js"></script>
+  <script src="js/utils/notifications.js"></script>
+  <script src="js/components/sidebar.js"></script>
+  <script src="js/components/taskList.js"></script>
+  <script src="js/components/taskForm.js"></script>
+  <script src="js/components/timer.js"></script>
+  <script src="js/components/reports.js"></script>
+  <script src="js/components/categories.js"></script>
+  <script src="js/components/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
