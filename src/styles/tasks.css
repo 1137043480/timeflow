@@ -181,6 +181,34 @@
 .task-time-bar-fill.near { background: var(--color-warning); }
 .task-time-bar-fill.over { background: var(--color-danger); }
 
+/* Task Time Range (start → end) */
+.task-card-timerange {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.75;
+  transition: opacity var(--transition-fast);
+}
+
+.task-card:hover .task-card-timerange {
+  opacity: 1;
+}
+
+.task-timerange-label {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.task-timerange-value {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
 /* Task Card Actions */
 .task-card-actions {
   display: flex;

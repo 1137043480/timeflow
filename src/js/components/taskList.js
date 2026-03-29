@@ -177,6 +177,22 @@ class TaskList {
       return `<span class="task-card-tag" style="color:${tag.color};border-color:${tag.color}30;background:${tag.color}15">${escapeHtml(tag.name)}</span>`;
     }).join('');
 
+    // Build time range display for completed/in-progress tasks
+    let timeRangeHtml = '';
+    if (task.status === 'completed' && task.startedAt) {
+      timeRangeHtml = `
+        <div class="task-card-timerange">
+          <span class="task-timerange-label">🕐</span>
+          <span class="task-timerange-value">${formatTimeBJ(task.startedAt)} → ${formatTimeBJ(task.completedAt)}</span>
+        </div>`;
+    } else if (task.status === 'in-progress' && task.startedAt) {
+      timeRangeHtml = `
+        <div class="task-card-timerange">
+          <span class="task-timerange-label">🕐</span>
+          <span class="task-timerange-value">${formatTimeBJ(task.startedAt)} 开始</span>
+        </div>`;
+    }
+
     return `
       <div class="task-card ${isActive ? 'active-timer' : ''}" data-task-id="${task.id}">
         <div class="task-card-header">
@@ -194,6 +210,7 @@ class TaskList {
           </div>
           <span class="task-time-actual">${isActive ? formatTimer(timer.elapsedSeconds) : formatMinutes(actualMinutes)}</span>
         </div>
+        ${timeRangeHtml}
         ${actionsHtml}
       </div>
     `;

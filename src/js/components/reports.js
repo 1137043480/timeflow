@@ -57,15 +57,22 @@ class ReportsComponent {
 
     // Task list
     const listEl = document.getElementById('daily-tasks-list');
-    listEl.innerHTML = todayTasks.map(t => `
+    listEl.innerHTML = todayTasks.map(t => {
+      const timeRange = t.startedAt
+        ? `<span class="daily-task-range">🕐 ${formatTimeBJ(t.startedAt)} → ${formatTimeBJ(t.completedAt)}</span>`
+        : '';
+      return `
       <div class="daily-task-item">
-        <span class="daily-task-name">${escapeHtml(t.title)}</span>
-        <div class="daily-task-times">
-          <span class="daily-task-estimated">预估 ${formatMinutes(t.estimatedMinutes)}</span>
-          <span class="daily-task-actual">实际 ${formatMinutes(t.actualMinutes)}</span>
+        <div class="daily-task-top">
+          <span class="daily-task-name">${escapeHtml(t.title)}</span>
+          <div class="daily-task-times">
+            <span class="daily-task-estimated">预估 ${formatMinutes(t.estimatedMinutes)}</span>
+            <span class="daily-task-actual">实际 ${formatMinutes(t.actualMinutes)}</span>
+          </div>
         </div>
-      </div>
-    `).join('') || '<p style="color:var(--text-muted);text-align:center;padding:40px;">今日暂无已完成任务</p>';
+        ${timeRange}
+      </div>`;
+    }).join('') || '<p style="color:var(--text-muted);text-align:center;padding:40px;">今日暂无已完成任务</p>';
   }
 
   renderDailyChart(tasks) {

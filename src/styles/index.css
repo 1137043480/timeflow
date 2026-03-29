@@ -609,18 +609,25 @@ body {
 
 .daily-task-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: var(--space-3) var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-2);
   transition: background var(--transition-fast);
+  gap: var(--space-1);
 }
 
 .daily-task-item:hover {
   background: var(--bg-card-hover);
+}
+
+.daily-task-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .daily-task-name {
@@ -641,4 +648,12 @@ body {
 .daily-task-actual {
   color: var(--accent-primary);
   font-weight: 500;
+}
+
+.daily-task-range {
+  font-size: 11px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  color: var(--text-muted);
+  opacity: 0.75;
+  letter-spacing: 0.3px;
 }
