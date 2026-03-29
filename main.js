@@ -2,36 +2,114 @@ const { app, BrowserWindow, ipcMain, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-// ===== Simple JSON File Store =====
-class JsonStore {
-  constructor(filePath, defaults) {
-    this.filePath = filePath;
+// ===== Remote API Store (syncs with VPS) =====
+const API_BASE = 'https://time.kzwbelieve.top';
+const AUTH_PASSWORD = 'tf2026';
+
+class RemoteStore {
+  constructor(localCachePath, defaults) {
+    this.localCachePath = localCachePath;
     this.defaults = defaults;
     this.data = null;
+    this.token = '';
   }
 
-  load() {
+  async authenticate() {
     try {
-      if (fs.existsSync(this.filePath)) {
-        const raw = fs.readFileSync(this.filePath, 'utf-8');
-        this.data = { ...this.defaults, ...JSON.parse(raw) };
-      } else {
-        this.data = { ...this.defaults };
-        this.save();
+      const res = await fetch(`${API_BASE}/api/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: AUTH_PASSWORD })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.token = data.token;
+        return true;
       }
     } catch (e) {
-      console.error('Failed to load data:', e);
+      console.warn('⚠️ VPS 认证失败:', e.message);
+    }
+    return false;
+  }
+
+  async _fetch(url, options = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.token}`,
+      ...options.headers
+    };
+    const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  async load() {
+    // Try to authenticate and load from remote
+    const authed = await this.authenticate();
+    if (authed) {
+      try {
+        const [tasks, archived, categories, tags, settings] = await Promise.all([
+          this._fetch('/api/tasks'),
+          this._fetch('/api/archived'),
+          this._fetch('/api/categories'),
+          this._fetch('/api/tags'),
+          this._fetch('/api/settings')
+        ]);
+        this.data = { tasks, archivedTasks: archived, categories, tags, settings };
+        this.saveLocal(); // Cache locally
+        console.log('☁️ 已从 VPS 加载数据');
+        return;
+      } catch (e) {
+        console.warn('⚠️ VPS 数据加载失败:', e.message);
+      }
+    }
+
+    // Fallback: load from local cache
+    this.loadLocal();
+  }
+
+  loadLocal() {
+    try {
+      if (fs.existsSync(this.localCachePath)) {
+        const raw = fs.readFileSync(this.localCachePath, 'utf-8');
+        this.data = { ...this.defaults, ...JSON.parse(raw) };
+        console.log('💾 已从本地缓存加载数据');
+      } else {
+        this.data = { ...this.defaults };
+      }
+    } catch (e) {
       this.data = { ...this.defaults };
     }
   }
 
-  save() {
+  saveLocal() {
     try {
-      const dir = path.dirname(this.filePath);
+      const dir = path.dirname(this.localCachePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
+      fs.writeFileSync(this.localCachePath, JSON.stringify(this.data, null, 2), 'utf-8');
     } catch (e) {
-      console.error('Failed to save data:', e);
+      console.error('本地缓存保存失败:', e);
+    }
+  }
+
+  async saveRemote(key) {
+    const apiMap = {
+      tasks: '/api/tasks',
+      archivedTasks: '/api/archived',
+      categories: '/api/categories',
+      tags: '/api/tags',
+      settings: '/api/settings'
+    };
+    const url = apiMap[key];
+    if (!url || !this.token) return;
+
+    try {
+      await this._fetch(url, {
+        method: 'PUT',
+        body: JSON.stringify(this.data[key])
+      });
+    } catch (e) {
+      console.warn(`⚠️ VPS 同步失败 (${key}):`, e.message);
     }
   }
 
@@ -41,7 +119,8 @@ class JsonStore {
 
   set(key, value) {
     this.data[key] = value;
-    this.save();
+    this.saveLocal();
+    this.saveRemote(key); // async, don't block
   }
 }
 
@@ -96,36 +175,14 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  // 优先使用 iCloud Drive 存储，实现跨设备同步
-  const homedir = require('os').homedir();
-  const iCloudPath = path.join(homedir, 'Library', 'Mobile Documents', 'com~apple~CloudDocs', 'TimeFlow');
+app.whenReady().then(async () => {
+  // Local cache path (still keeps a local copy for offline fallback)
   const localPath = app.getPath('userData');
+  const dataPath = path.join(localPath, 'timeflow-data.json');
 
-  let dataDir;
-  if (process.platform === 'darwin' && fs.existsSync(path.join(homedir, 'Library', 'Mobile Documents', 'com~apple~CloudDocs'))) {
-    // iCloud Drive 可用
-    dataDir = iCloudPath;
-    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-    console.log('☁️ 使用 iCloud Drive 存储');
-
-    // 如果本地有旧数据但 iCloud 没有，自动迁移
-    const localFile = path.join(localPath, 'timeflow-data.json');
-    const iCloudFile = path.join(iCloudPath, 'timeflow-data.json');
-    if (fs.existsSync(localFile) && !fs.existsSync(iCloudFile)) {
-      fs.copyFileSync(localFile, iCloudFile);
-      console.log('📦 已将本地数据迁移到 iCloud Drive');
-    }
-  } else {
-    // 非 Mac 或 iCloud 不可用，使用本地存储
-    dataDir = localPath;
-    console.log('💾 使用本地存储');
-  }
-
-  const dataPath = path.join(dataDir, 'timeflow-data.json');
-  store = new JsonStore(dataPath, defaults);
-  store.load();
-  console.log('TimeFlow data stored at:', dataPath);
+  store = new RemoteStore(dataPath, defaults);
+  await store.load();
+  console.log('TimeFlow data cache at:', dataPath);
 
   createWindow();
 
